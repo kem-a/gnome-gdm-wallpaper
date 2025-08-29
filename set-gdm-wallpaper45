@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Set a custom image as the GDM (login) background by modifying the gnome-shell theme gresource.
+# Works on GNOME 45–48. Requires: gresource, glib-compile-resources, coreutils, sed.
+# Usage: sudo ./set-gdm-wallpaper.sh /absolute/path/to/image.(png|jpg|jpeg)
+
+set -euo pipefail
+
+### --- helpers ---
+err() { printf "Error: %s\n" "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || err "Missing command: $1"; }
+
+### --- sanity checks ---
+[ $# -eq 1 ] || err "Usage: sudo $0 /absolute/path/to/image"
+IMG="$1"
+
+[ "$(id -u)" -eq 0 ] || err "Run as root (sudo) because we write to /usr/share/gnome-shell/"
+[ -f "$IMG" ] || err "Image not found: $IMG"
+case "${IMG##*.}" in
+  png|PNG|jpg|JPG|jpeg|JPEG) : ;;
+  *) err "Unsupported image extension. Use PNG or JPG/JPEG."; ;;
+esac
+
+need gresource
+need glib-compile-resources
+need sed
+need find
+need mktemp
+need realpath
+
+GST="/usr/share/gnome-shell/gnome-shell-theme.gresource"
+[ -r "$GST" ] || err "Cannot read $GST (is gnome-shell installed here?)"
+
+# Ensure the image path is a regular file and world-readable (GDM runs as 'gdm'):
+chmod a+r "$IMG" || true
+
+### --- prepare workspace & extract resources ---
+WORKDIR="$(mktemp -d)"
+cleanup() { rm -rf "$WORKDIR"; }
+trap cleanup EXIT
+
+echo "Extracting current shell theme to: $WORKDIR"
+# Recreate resource tree under $WORKDIR
+while IFS= read -r RES; do
+  DEST="$WORKDIR${RES}"
+  mkdir -p "$(dirname "$DEST")"
+  gresource extract "$GST" "$RES" > "$DEST"
+done < <(gresource list "$GST")
+
+THEME_DIR="$WORKDIR/org/gnome/shell/theme"
+[ -d "$THEME_DIR" ] || err "Extracted theme directory not found (unexpected resource layout)."
+
+### --- add the image into the theme payload ---
+BASENAME="$(basename "$IMG")"
+# Normalize the target name to avoid weird chars/spaces; keep extension
+EXT="${BASENAME##*.}"
+TARGET_NAME="gdm-wallpaper.${EXT,,}"  # e.g. gdm-wallpaper.png
+cp -f -- "$IMG" "$THEME_DIR/$TARGET_NAME"
+
+### --- patch CSS (append override block to whichever CSS files exist) ---
+CSS_FILES=()
+for f in "gnome-shell.css" "gnome-shell-dark.css" "gnome-shell-light.css" "gnome-shell-high-contrast.css"; do
+  [ -f "$THEME_DIR/$f" ] && CSS_FILES+=("$THEME_DIR/$f")
+done
+
+if [ ${#CSS_FILES[@]} -eq 0 ]; then
+  err "No gnome-shell*.css found in extracted theme. Aborting."
+fi
+
+echo "Patching CSS in: ${CSS_FILES[*]##$THEME_DIR/}"
+for css in "${CSS_FILES[@]}"; do
+  cat >>"$css" <<EOF
+
+/* injected by set-gdm-wallpaper.sh on $(date -u +"%Y-%m-%dT%H:%M:%SZ") */
+#lockDialogGroup {
+  background: url("$TARGET_NAME");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+/* avoid grey panel */
+.login-dialog { background-color: transparent; }
+EOF
+done
+
+### --- rebuild gresource with ALL original files + our image ---
+XML="$THEME_DIR/gnome-shell-theme.gresource.xml"
+echo "Generating resource manifest..."
+{
+  echo '<?xml version="1.0" encoding="UTF-8"?>'
+  echo '<gresources>'
+  echo '  <gresource prefix="/org/gnome/shell/theme">'
+  # List ALL files relative to THEME_DIR (sorted) except the XML itself
+  ( cd "$THEME_DIR" && \
+    find . -type f ! -name "gnome-shell-theme.gresource.xml" -printf '    <file>%P</file>\n' | sort )
+  echo '  </gresource>'
+  echo '</gresources>'
+} > "$XML"
+
+echo "Compiling gresource..."
+OUT="$WORKDIR/gnome-shell-theme.gresource"
+glib-compile-resources "$XML" --sourcedir="$THEME_DIR" --target="$OUT"
+
+# Safety: ensure output looks like a gresource (non-empty)
+[ -s "$OUT" ] || err "Failed to compile resource."
+
+### --- install (backup existing), then done ---
+TS="$(date +%Y%m%d-%H%M%S)"
+BACKUP="/usr/share/gnome-shell/gnome-shell-theme.gresource.bak-$TS"
+echo "Backing up original gresource to: $BACKUP"
+cp -f -- "$GST" "$BACKUP"
+
+echo "Installing new theme resource..."
+install -m 0644 "$OUT" "$GST"
+
+echo "Done. Restarting GDM (this will log you out)..."
+systemctl restart gdm
