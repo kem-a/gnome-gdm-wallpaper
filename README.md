@@ -1,6 +1,6 @@
 # Set GDM Wallpaper for GNOME 45+
 
-A simple script to set a custom background image for the GDM (login screen) on GNOME 45, 46, 47, and 48.
+A simple script to set a custom background image for the GDM (login screen) on GNOME 45 and newer (45+).
 
 ## Description
 
@@ -20,20 +20,43 @@ You must have the following command-line tools installed:
 - `gresource` (often in `libglib2.0-bin` or `glib2`)
 - `coreutils`, `sed`, `find`, `mktemp` (standard on most Linux systems)
 
+
 ## Usage
 
-1.  Download the `set-gdm-wallpaper45` script.
-2.  Make it executable:
-    ```sh
-    chmod +x set-gdm-wallpaper45
-    ```
-3.  Run the script with `sudo`, passing the absolute path to your desired wallpaper image. The image must be a PNG or JPG/JPEG file.
+Download the `set-gdm-wallpaper45` script and make it executable:
 
-    ```sh
-    sudo ./set-gdm-wallpaper45 /home/user/Pictures/my-awesome-wallpaper.png
-    ```
+```sh
+chmod +x set-gdm-wallpaper45
+```
 
-> **Warning:** The script will restart the GNOME Display Manager (`gdm`), which will immediately terminate your current user session and log you out. Save any open work before running it.
+### Install a custom wallpaper
+
+```sh
+sudo ./set-gdm-wallpaper45 -i /absolute/path/to/image.png
+```
+
+### Blur the wallpaper (optional)
+
+You can blur the wallpaper using ImageMagick before installing:
+
+```sh
+sudo ./set-gdm-wallpaper45 -i /absolute/path/to/image.png -b 8
+```
+
+- The `-b` or `--blur` option takes a blur strength (recommended: 5–15, try 8; range: 1–30+).
+- Requires ImageMagick (`magick` command).
+
+### Restore the default GDM theme and remove all backups
+
+```sh
+sudo ./set-gdm-wallpaper45 -r
+```
+
+This restores the original GDM theme and deletes all custom backups created by the script.
+
+
+
+> **Warning:** The script will prompt you before restarting the GNOME Display Manager (`gdm`). Restarting GDM will immediately terminate your current user session and log you out. Save any open work before running it. If you choose not to restart GDM immediately, you must do so manually (or reboot) for the wallpaper change to take effect.
 
 ## Reverting Changes
 

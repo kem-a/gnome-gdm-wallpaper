@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+#
+# set-gdm-wallpaper: Set a custom GDM wallpaper for GNOME 45+
+#
+# Version: 1.0.0
+# Copyright (c) 2023-2025 Arnis Kemlers
+# License: MIT
+#
+# Set a custom image as the GDM (login) background by modifying the gnome-shell theme gresource.
+# Works on GNOME 45+. Requires: gresource, glib-compile-resources, coreutils, sed.
+# Usage: sudo ./set-gdm-wallpaper /absolute/path/to/image.(png|jpg|jpeg)
+
+
+set -euo pipefail
+
+usage() {
+	echo "Usage: sudo $0 -i /absolute/path/to/image.(png|jpg|jpeg) [-b XX]"
+	echo "       sudo $0 -r"
+	echo "  -i, --install   Install custom wallpaper for GDM (requires image path)"
+	echo "  -b, --blur XX   Blur wallpaper with ImageMagick (requires -i). XX is blur strength (recommended: 5–15, try 8)"
+	echo "                 Typical range: 1 (slight) to 30+ (very strong)."
+	echo "  -r, --remove    Restore default GDM theme and remove all custom backups"
+	exit 1
+}
+
+MODE=""
+IMG=""
+BLUR=""
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-i|--install)
+			MODE="install"
+			shift
+			IMG="$1"
+			shift
+		;;
+		-b|--blur)
+			BLUR="$2"
+			shift 2
+		;;
+		-r|--remove)
+			MODE="remove"
+			shift
+		;;
+		-h|--help)
+			usage
+		;;
+		*)
+			usage
+		;;
+	esac
+done
+
+GST="/usr/share/gnome-shell/gnome-shell-theme.gresource"
+
+if [[ "$MODE" == "remove" ]]; then
+	[ "$(id -u)" -eq 0 ] || err "Run as root (sudo) because we write to /usr/share/gnome-shell/"
+	# Find the latest backup
+	LATEST_BAK=$(ls -1t /usr/share/gnome-shell/gnome-shell-theme.gresource.bak-* 2>/dev/null | head -n1)
+	if [[ -z "$LATEST_BAK" ]]; then
+		err "No backup found to restore."
+	fi
+	echo "Restoring original GDM theme from: $LATEST_BAK"
+	cp -f -- "$LATEST_BAK" "$GST"
+	echo "Removing all custom GDM theme backups..."
+	rm -f /usr/share/gnome-shell/gnome-shell-theme.gresource.bak-*
+	echo "Done."
+	echo
+	echo "*** WARNING: About to restart GDM. This will log out all users and end all sessions. ***"
+	read -rp "Restart GDM now? [y/N]: " confirm
+	case "$confirm" in
+		[yY][eE][sS]|[yY])
+			echo "Restarting GDM..."
+			systemctl restart gdm
+			echo "GDM restarted. Default wallpaper should be visible at next login."
+		;;
+		*)
+			echo "GDM restart skipped. You must restart GDM manually for changes to take effect or just reboot"
+		;;
+	esac
+	exit 0
+fi
+
+### --- helpers ---
+err() { printf "Error: %s\n" "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || err "Missing command: $1"; }
+
+
+### --- sanity checks ---
+if [[ "$MODE" != "install" || -z "$IMG" ]]; then
+	usage
+fi
+
+
+[ "$(id -u)" -eq 0 ] || err "Run as root (sudo) because we write to /usr/share/gnome-shell/"
+[ -f "$IMG" ] || err "Image not found: $IMG"
+case "${IMG##*.}" in
+	png|PNG|jpg|JPG|jpeg|JPEG) : ;;
+	*) err "Unsupported image extension. Use PNG or JPG/JPEG."; ;;
+esac
+
+# If blur is requested, use ImageMagick to blur the image before proceeding
+if [[ -n "$BLUR" ]]; then
+	need magick
+	TMP_BLUR_IMG="$(mktemp --suffix=.${IMG##*.})"
+	echo "Blurring image with strength $BLUR..."
+	magick convert "$IMG" -blur 0x$BLUR "$TMP_BLUR_IMG"
+	IMG="$TMP_BLUR_IMG"
+fi
+
+need gresource
+need glib-compile-resources
+need sed
+need find
+need mktemp
+need realpath
+
+GST="/usr/share/gnome-shell/gnome-shell-theme.gresource"
+[ -r "$GST" ] || err "Cannot read $GST (is gnome-shell installed here?)"
+
+# Ensure the image path is a regular file and world-readable (GDM runs as 'gdm'):
+chmod a+r "$IMG" || true
+
+### --- prepare workspace & extract resources ---
+WORKDIR="$(mktemp -d)"
+cleanup() { rm -rf "$WORKDIR"; }
+trap cleanup EXIT
+
+echo "Extracting current shell theme to: $WORKDIR"
+# Recreate resource tree under $WORKDIR
+while IFS= read -r RES; do
+	DEST="$WORKDIR${RES}"
+	mkdir -p "$(dirname "$DEST")"
+	gresource extract "$GST" "$RES" > "$DEST"
+done < <(gresource list "$GST")
+
+THEME_DIR="$WORKDIR/org/gnome/shell/theme"
+[ -d "$THEME_DIR" ] || err "Extracted theme directory not found (unexpected resource layout)."
+
+### --- add the image into the theme payload ---
+BASENAME="$(basename "$IMG")"
+# Normalize the target name to avoid weird chars/spaces; keep extension
+EXT="${BASENAME##*.}"
+TARGET_NAME="gdm-wallpaper.${EXT,,}"  # e.g. gdm-wallpaper.png
+cp -f -- "$IMG" "$THEME_DIR/$TARGET_NAME"
+
+### --- patch CSS (append override block to whichever CSS files exist) ---
+CSS_FILES=()
+for f in "gnome-shell.css" "gnome-shell-dark.css" "gnome-shell-light.css" "gnome-shell-high-contrast.css"; do
+	[ -f "$THEME_DIR/$f" ] && CSS_FILES+=("$THEME_DIR/$f")
+done
+
+if [ ${#CSS_FILES[@]} -eq 0 ]; then
+	err "No gnome-shell*.css found in extracted theme. Aborting."
+fi
+
+echo "Patching CSS in: ${CSS_FILES[*]##$THEME_DIR/}"
+for css in "${CSS_FILES[@]}"; do
+  cat >>"$css" <<EOF
+
+/* injected by set-gdm-wallpaper.sh on $(date -u +"%Y-%m-%dT%H:%M:%SZ") */
+#lockDialogGroup {
+  background: url("$TARGET_NAME");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+/* avoid grey panel */
+.login-dialog { background-color: transparent; }
+EOF
+done
+
+### --- rebuild gresource with ALL original files + our image ---
+XML="$THEME_DIR/gnome-shell-theme.gresource.xml"
+echo "Generating resource manifest..."
+{
+	echo '<?xml version="1.0" encoding="UTF-8"?>'
+	echo '<gresources>'
+	echo '  <gresource prefix="/org/gnome/shell/theme">'
+	# List ALL files relative to THEME_DIR (sorted) except the XML itself
+	( cd "$THEME_DIR" && \
+	find . -type f ! -name "gnome-shell-theme.gresource.xml" -printf '    <file>%P</file>\n' | sort )
+	echo '  </gresource>'
+	echo '</gresources>'
+} > "$XML"
+
+echo "Compiling gresource..."
+OUT="$WORKDIR/gnome-shell-theme.gresource"
+glib-compile-resources "$XML" --sourcedir="$THEME_DIR" --target="$OUT"
+
+# Safety: ensure output looks like a gresource (non-empty)
+[ -s "$OUT" ] || err "Failed to compile resource."
+
+### --- install (backup existing), then done ---
+TS="$(date +%Y%m%d-%H%M%S)"
+BACKUP="/usr/share/gnome-shell/gnome-shell-theme.gresource.bak-$TS"
+echo "Backing up original gresource to: $BACKUP"
+cp -f -- "$GST" "$BACKUP"
+
+echo "Installing new theme resource..."
+install -m 0644 "$OUT" "$GST"
+
+
