@@ -5,13 +5,7 @@ A simple script to set a custom background image for the GDM (login screen) on G
 ## Description
 
 This script automates the process of changing the GDM background by modifying the `gnome-shell-theme.gresource` file. It works by:
-1. Extracting the default GDM theme resources.
-2. Adding your custom wallpaper to the resource bundle.
-3. Patching the relevant CSS files to display your wallpaper.
-4. Re-compiling the theme resources.
-5. Backing up the original theme file.
-6. Installing the new theme file.
-7. Restarting GDM to apply the changes.
+
 
 ## Requirements
 
@@ -19,37 +13,36 @@ You must have the following command-line tools installed:
 - `glib-compile-resources` (often in `libglib2.0-dev` or `glib2-devel`)
 - `gresource` (often in `libglib2.0-bin` or `glib2`)
 - `coreutils`, `sed`, `find`, `mktemp` (standard on most Linux systems)
+ - `ImageMagick` only required if you use the blur option
 
 
-## Usage
+## Usage (simple)
 
-Download the `set-gdm-wallpaper45` script and make it executable:
+Make the script executable:
 
 ```sh
-chmod +x set-gdm-wallpaper45
+chmod +x set-gdm-wallpaper
 ```
 
-### Install a custom wallpaper
+- Install a wallpaper:
 
 ```sh
-sudo ./set-gdm-wallpaper45 -i /absolute/path/to/image.png
+sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png
 ```
 
-### Blur the wallpaper (optional)
-
-You can blur the wallpaper using ImageMagick before installing:
+- Install with blur (optional):
 
 ```sh
-sudo ./set-gdm-wallpaper45 -i /absolute/path/to/image.png -b 8
+sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png -b 8
 ```
 
-- The `-b` or `--blur` option takes a blur strength (recommended: 5–15, try 8; range: 1–30+).
-- Requires ImageMagick (`magick` command).
+    - Blur strength: recommended 5–15 (try 8); usable range ~1–30+.
+    - Requires ImageMagick (`magick`).
 
-### Restore the default GDM theme and remove all backups
+- Restore default and remove backups:
 
 ```sh
-sudo ./set-gdm-wallpaper45 -r
+sudo ./set-gdm-wallpaper -r
 ```
 
 This restores the original GDM theme and deletes all custom backups created by the script.
@@ -58,7 +51,7 @@ This restores the original GDM theme and deletes all custom backups created by t
 
 > **Warning:** The script will prompt you before restarting the GNOME Display Manager (`gdm`). Restarting GDM will immediately terminate your current user session and log you out. Save any open work before running it. If you choose not to restart GDM immediately, you must do so manually (or reboot) for the wallpaper change to take effect.
 
-## Reverting Changes
+## Manually Reverting Changes
 
 The script automatically creates a timestamped backup of the original theme file in `/usr/share/gnome-shell/` with a name like `gnome-shell-theme.gresource.bak-YYYYMMDD-HHMMSS`.
 
