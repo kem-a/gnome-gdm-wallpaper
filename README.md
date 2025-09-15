@@ -1,11 +1,6 @@
 # Set GDM Wallpaper for GNOME 45+
 
-A simple script to set a custom background image for the GDM (login screen) on GNOME 45 and newer (45+).
-
-## Description
-
-This script automates the process of changing the GDM background by modifying the `gnome-shell-theme.gresource` file. It works by:
-
+A simple script to set a custom background image for the GDM (login screen) on GNOME 45 and newer (45+). This script automates the process of changing the GDM background by modifying the `gnome-shell-theme.gresource` file.
 
 ## Requirements
 
