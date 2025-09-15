@@ -8,10 +8,10 @@ You must have the following command-line tools installed:
 - `glib-compile-resources` (often in `libglib2.0-dev` or `glib2-devel`)
 - `gresource` (often in `libglib2.0-bin` or `glib2`)
 - `ImageMagick` (`magick`) — only required if you use the blur option
-#### Installing dependencies
+### Installing dependencies
 
 ```bash
-sudo dnf install glib2 glib2-devel ImageMagick
+sudo dnf install glib2 glib2-devel
 ```
 
 ## Usage
@@ -28,13 +28,13 @@ git clone https://github.com/kem-a/gnome-gdm-wallpaper && cd gnome-gdm-wallpaper
 sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png -b 8
 ```
 
-#### Restore default
+### Restore default
 
 ```sh
 sudo ./set-gdm-wallpaper -r
 ```
 
-#### Command-line arguments
+### Command-line arguments
 
 | Argument | Description |
 | --- | --- |
