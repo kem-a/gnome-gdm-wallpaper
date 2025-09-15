@@ -13,6 +13,10 @@
 
 set -euo pipefail
 
+### --- helpers ---
+err() { printf "Error: %s\n" "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || err "Missing command: $1"; }
+
 usage() {
 	echo "Usage: sudo $0 -i /absolute/path/to/image.(png|jpg|jpeg) [-b XX]"
 	echo "       sudo $0 -r"
@@ -68,7 +72,12 @@ if [[ "$MODE" == "remove" ]]; then
 	echo "Done."
 	echo
 	echo "*** WARNING: About to restart GDM. This will log out all users and end all sessions. ***"
-	read -rp "Restart GDM now? [y/N]: " confirm
+	printf "Restart GDM now? [y/N]: "
+	if [ -r /dev/tty ]; then
+		read -r confirm < /dev/tty
+	else
+		read -r confirm
+	fi
 	case "$confirm" in
 		[yY][eE][sS]|[yY])
 			echo "Restarting GDM..."
@@ -81,10 +90,6 @@ if [[ "$MODE" == "remove" ]]; then
 	esac
 	exit 0
 fi
-
-### --- helpers ---
-err() { printf "Error: %s\n" "$*" >&2; exit 1; }
-need() { command -v "$1" >/dev/null 2>&1 || err "Missing command: $1"; }
 
 
 ### --- sanity checks ---
@@ -116,7 +121,6 @@ need find
 need mktemp
 need realpath
 
-GST="/usr/share/gnome-shell/gnome-shell-theme.gresource"
 [ -r "$GST" ] || err "Cannot read $GST (is gnome-shell installed here?)"
 
 # Ensure the image path is a regular file and world-readable (GDM runs as 'gdm'):
@@ -159,7 +163,7 @@ echo "Patching CSS in: ${CSS_FILES[*]##$THEME_DIR/}"
 for css in "${CSS_FILES[@]}"; do
   cat >>"$css" <<EOF
 
-/* injected by set-gdm-wallpaper.sh on $(date -u +"%Y-%m-%dT%H:%M:%SZ") */
+/* injected by set-gdm-wallpaper on $(date -u +"%Y-%m-%dT%H:%M:%SZ") */
 #lockDialogGroup {
   background: url("$TARGET_NAME");
   background-position: center;
@@ -205,15 +209,17 @@ install -m 0644 "$OUT" "$GST"
 # Prompt to restart GDM so changes take effect
 echo
 echo "*** WARNING: About to restart GDM. This will log out all users and end all sessions. ***"
-confirm=""
-if ! read -rp "Restart GDM now? [y/N]: " confirm < /dev/tty 2>/dev/null; then
-	read -rp "Restart GDM now? [y/N]: " confirm
+printf "Restart GDM now? [y/N]: "
+if [ -r /dev/tty ]; then
+	read -r confirm < /dev/tty
+else
+	read -r confirm
 fi
 case "$confirm" in
 	[yY][eE][sS]|[yY])
 		echo "Restarting GDM..."
+		sleep 3
 		systemctl restart gdm
-		echo "GDM restarted. New wallpaper should be visible at next login."
 		;;
 	*)
 		echo "GDM restart skipped. You must restart GDM manually for changes to take effect or just reboot"
