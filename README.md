@@ -7,28 +7,24 @@ A simple script to set a custom background image for the GDM (login screen) on G
 You must have the following command-line tools installed:
 - `glib-compile-resources` (often in `libglib2.0-dev` or `glib2-devel`)
 - `gresource` (often in `libglib2.0-bin` or `glib2`)
-- `ImageMagick` (`magick`) — only required if you use the blur option
-### Installing dependencies
-
-```bash
-sudo dnf install glib2 glib2-devel
-```
+- `coreutils`, `sed`, `find`, `mktemp` (standard on most Linux systems)
+ - `ImageMagick` (`magick`) — only required if you use the blur option
 
 ## Usage
 
-#### Download and make it executable
+### Download and make it executable
 
 ```bash
 git clone https://github.com/kem-a/gnome-gdm-wallpaper && cd gnome-gdm-wallpaper && chmod +x set-gdm-wallpaper
 ```
 
-#### Install GDM wallpaper
+### Install GDM wallpaper
 
 ```sh
 sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png -b 8
 ```
 
-### Restore default
+## Restore default
 
 ```sh
 sudo ./set-gdm-wallpaper -r
