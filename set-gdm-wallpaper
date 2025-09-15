@@ -36,13 +36,13 @@ while [[ $# -gt 0 ]]; do
 		-i|--install)
 			# Enforce mutual exclusivity with remove
 			if [[ -n "$MODE" && "$MODE" != "install" ]]; then
-				err "Options -i/--install and -r/--remove are mutually exclusive"
+				err "Options --install and --remove are mutually exclusive"
 			fi
 			MODE="install"
 			shift
 			# Require image path argument after -i/--install
 			if [[ $# -eq 0 || "$1" == -* ]]; then
-				err "-i/--install requires an image path argument"
+				err "--install requires an image path argument"
 			fi
 			IMG="$1"
 			shift
@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
 		-b|--blur)
 			# Ensure blur value exists and is a positive integer
 			if [[ $# -lt 2 || "$2" == -* ]]; then
-				err "-b/--blur requires a numeric strength argument (e.g., 8)"
+				err "--blur requires a numeric strength argument (e.g., 8)"
 			fi
 			if ! [[ "$2" =~ ^[0-9]+$ ]]; then
 				err "Blur strength must be a positive integer (e.g., 8)"
@@ -61,7 +61,7 @@ while [[ $# -gt 0 ]]; do
 		-r|--remove)
 			# Enforce mutual exclusivity with install
 			if [[ -n "$MODE" && "$MODE" != "remove" ]]; then
-				err "Options -i/--install and -r/--remove are mutually exclusive"
+				err "Options --install and --remove are mutually exclusive"
 			fi
 			MODE="remove"
 			shift
@@ -128,7 +128,7 @@ esac
 
 # If blur is requested, use ImageMagick to blur the image before proceeding
 if [[ -n "$BLUR" ]]; then
-	[[ "$MODE" == "install" ]] || err "-b/--blur can only be used with -i/--install"
+	[[ "$MODE" == "install" ]] || err "--blur can only be used with --install"
 	need magick
 	TMP_BLUR_IMG="$(mktemp --suffix=.${IMG##*.})"
 	echo "Blurring image with strength $BLUR..."
