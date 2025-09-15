@@ -1,36 +1,45 @@
 # Set GDM Wallpaper for GNOME 45+
 
-A simple script to set a custom background image for the GDM (login screen) on GNOME 45 and newer (45+)
+A simple script to set a custom background image for the GDM (login screen) on GNOME 45 and newer (45+).
+
+## Description
+
+This script automates the process of changing the GDM background by modifying the `gnome-shell-theme.gresource` file. It works by:
+
 
 ## Requirements
 
 You must have the following command-line tools installed:
 - `glib-compile-resources` (often in `libglib2.0-dev` or `glib2-devel`)
 - `gresource` (often in `libglib2.0-bin` or `glib2`)
-- `coreutils`, `sed`, `find`, `mktemp` (standard on most Linux systems)
- - `ImageMagick` (`magick`) — only required if you use the blur option
+- `ImageMagick` (`magick`) — only required if you use the blur option
+#### Installing dependencies
+
+```bash
+sudo dnf install glib2 glib2-devel ImageMagick
+```
 
 ## Usage
 
-### Download and make it executable
+#### Download and make it executable
 
 ```bash
 git clone https://github.com/kem-a/gnome-gdm-wallpaper && cd gnome-gdm-wallpaper && chmod +x set-gdm-wallpaper
 ```
 
-### Install GDM wallpaper
+#### Install GDM wallpaper
 
 ```sh
 sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png -b 8
 ```
 
-## Restore default
+#### Restore default
 
 ```sh
 sudo ./set-gdm-wallpaper -r
 ```
 
-### Command-line arguments
+#### Command-line arguments
 
 | Argument | Description |
 | --- | --- |

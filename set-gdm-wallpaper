@@ -220,4 +220,20 @@ case "$confirm" in
 		;;
 esac
 
-
+# Prompt to restart GDM so changes take effect
+echo
+echo "*** WARNING: About to restart GDM. This will log out all users and end all sessions. ***"
+confirm=""
+if ! read -rp "Restart GDM now? [y/N]: " confirm < /dev/tty 2>/dev/null; then
+	read -rp "Restart GDM now? [y/N]: " confirm
+fi
+case "$confirm" in
+	[yY][eE][sS]|[yY])
+		echo "Restarting GDM..."
+		systemctl restart gdm
+		echo "GDM restarted. New wallpaper should be visible at next login."
+		;;
+	*)
+		echo "GDM restart skipped. You must restart GDM manually for changes to take effect or just reboot"
+		;;
+esac
