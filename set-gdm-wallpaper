@@ -20,11 +20,11 @@ need() { command -v "$1" >/dev/null 2>&1 || err "Missing command: $1"; }
 usage() {
 	echo "Usage: sudo $0 -i /absolute/path/to/image.(png|jpg|jpeg) [-b XX]"
 	echo "       sudo $0 -r"
-	echo "  -i, --install   Install custom wallpaper for GDM (requires image path)"
-	echo "  -b, --blur XX   Blur wallpaper with ImageMagick (requires -i). XX is blur strength (recommended: 5–15, try 8)"
-	echo "                 Typical range: 1 (slight) to 30+ (very strong)."
-	echo "  -r, --remove    Restore default GDM theme and remove all custom backups"
-	echo "  -h, --help      Show this help and exit"
+	echo "  -i, --install <image>  Install custom wallpaper for GDM (absolute image path)"
+	echo "  -b, --blur XX          Blur wallpaper with ImageMagick (requires -i). XX is blur strength"
+	echo "                         Recommended: 5–15 (try 8); usable range ~1–30+."
+	echo "  -r, --remove           Restore default GDM theme and remove all custom backups"
+	echo "  -h, --help             Show this help and exit"
 	exit 1
 }
 
@@ -34,16 +34,35 @@ BLUR=""
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 		-i|--install)
+			# Enforce mutual exclusivity with remove
+			if [[ -n "$MODE" && "$MODE" != "install" ]]; then
+				err "Options -i/--install and -r/--remove are mutually exclusive"
+			fi
 			MODE="install"
 			shift
+			# Require image path argument after -i/--install
+			if [[ $# -eq 0 || "$1" == -* ]]; then
+				err "-i/--install requires an image path argument"
+			fi
 			IMG="$1"
 			shift
 		;;
 		-b|--blur)
+			# Ensure blur value exists and is a positive integer
+			if [[ $# -lt 2 || "$2" == -* ]]; then
+				err "-b/--blur requires a numeric strength argument (e.g., 8)"
+			fi
+			if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+				err "Blur strength must be a positive integer (e.g., 8)"
+			fi
 			BLUR="$2"
 			shift 2
 		;;
 		-r|--remove)
+			# Enforce mutual exclusivity with install
+			if [[ -n "$MODE" && "$MODE" != "remove" ]]; then
+				err "Options -i/--install and -r/--remove are mutually exclusive"
+			fi
 			MODE="remove"
 			shift
 		;;
@@ -51,7 +70,7 @@ while [[ $# -gt 0 ]]; do
 			usage
 		;;
 		*)
-			usage
+			err "Unknown option: $1"
 		;;
 	esac
 done
@@ -100,6 +119,8 @@ fi
 
 [ "$(id -u)" -eq 0 ] || err "Run as root (sudo) because we write to /usr/share/gnome-shell/"
 [ -f "$IMG" ] || err "Image not found: $IMG"
+# Normalize to absolute path (safer under sudo)
+IMG="$(realpath -e "$IMG")"
 case "${IMG##*.}" in
 	png|PNG|jpg|JPG|jpeg|JPEG) : ;;
 	*) err "Unsupported image extension. Use PNG or JPG/JPEG."; ;;
@@ -107,10 +128,11 @@ esac
 
 # If blur is requested, use ImageMagick to blur the image before proceeding
 if [[ -n "$BLUR" ]]; then
+	[[ "$MODE" == "install" ]] || err "-b/--blur can only be used with -i/--install"
 	need magick
 	TMP_BLUR_IMG="$(mktemp --suffix=.${IMG##*.})"
 	echo "Blurring image with strength $BLUR..."
-	magick convert "$IMG" -blur 0x$BLUR "$TMP_BLUR_IMG"
+	magick "$IMG" -blur 0x"$BLUR" "$TMP_BLUR_IMG"
 	IMG="$TMP_BLUR_IMG"
 fi
 
