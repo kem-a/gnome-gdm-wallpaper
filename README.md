@@ -13,39 +13,36 @@ You must have the following command-line tools installed:
 - `glib-compile-resources` (often in `libglib2.0-dev` or `glib2-devel`)
 - `gresource` (often in `libglib2.0-bin` or `glib2`)
 - `coreutils`, `sed`, `find`, `mktemp` (standard on most Linux systems)
- - `ImageMagick` only required if you use the blur option
+ - `ImageMagick` (`magick`) — only required if you use the blur option
 
+## Usage
 
-## Usage (simple)
+### Download and make it executable
 
-Make the script executable:
-
-```sh
-chmod +x set-gdm-wallpaper
+```bash
+git clone https://github.com/kem-a/gnome-gdm-wallpaper && cd gnome-gdm-wallpaper && chmod +x set-gdm-wallpaper
 ```
 
-- Install a wallpaper:
-
-```sh
-sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png
-```
-
-- Install with blur (optional):
+### Install GDM wallpaper
 
 ```sh
 sudo ./set-gdm-wallpaper -i /absolute/path/to/image.png -b 8
 ```
 
-    - Blur strength: recommended 5–15 (try 8); usable range ~1–30+.
-    - Requires ImageMagick (`magick`).
-
-- Restore default and remove backups:
+### Restore default
 
 ```sh
 sudo ./set-gdm-wallpaper -r
 ```
 
-This restores the original GDM theme and deletes all custom backups created by the script.
+### Command-line arguments
+
+| Argument | Description |
+| --- | --- |
+| `-i, --install <image>` | Install a custom wallpaper for GDM from an absolute image path (`.png`/`.jpg`/`.jpeg`). |
+| `-b, --blur <XX>` | Blur the wallpaper using ImageMagick before installing. Recommended: 5–15 (try 8); usable range ~1–30+. Requires `magick`. |
+| `-r, --remove` | Restore the default GDM theme and delete all custom backups created by the script. |
+| `-h, --help` | Show usage help and exit. |
 
 
 

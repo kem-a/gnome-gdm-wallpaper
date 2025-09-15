@@ -20,6 +20,7 @@ usage() {
 	echo "  -b, --blur XX   Blur wallpaper with ImageMagick (requires -i). XX is blur strength (recommended: 5–15, try 8)"
 	echo "                 Typical range: 1 (slight) to 30+ (very strong)."
 	echo "  -r, --remove    Restore default GDM theme and remove all custom backups"
+	echo "  -h, --help      Show this help and exit"
 	exit 1
 }
 
