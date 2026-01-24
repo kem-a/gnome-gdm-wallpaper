@@ -4,7 +4,7 @@ A simple script to set a custom background image for the GDM (login screen) on G
 
 ## Description
 
-This script automates the process of changing the GDM background by modifying the `gnome-shell-theme.gresource` file. It works by:
+This script automates the process of changing the GDM background by modifying the `gnome-shell-theme.gresource` file.
 
 
 ## Requirements
