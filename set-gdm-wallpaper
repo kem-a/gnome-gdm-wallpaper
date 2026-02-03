@@ -3,7 +3,7 @@
 # set-gdm-wallpaper: Set a custom GDM wallpaper for GNOME 45+
 #
 # Version: 1.0.0
-# Copyright (c) 2023-2025 Arnis Kemlers
+# Copyright (c) 2023-2026 Arnis Kemlers
 # License: MIT
 #
 # Set a custom image as the GDM (login) background by modifying the gnome-shell theme gresource.
